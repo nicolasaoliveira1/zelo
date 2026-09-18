@@ -55,14 +55,6 @@ pagamento**.
 - **Duas coisas se chamam "competência" e quase nunca são o mesmo mês**: a competência do honorário (mês de referência) e a competência do DPS (mês da emissão). O cliente paga em julho o honorário de junho, e casar os dois campos acusava "pagou e ficou sem nota" para quase todo cliente. A conciliação usa **documento + valor**, com desempate por proximidade de data.
 - A consulta é **somente de leitura** e ocorre em segundo plano. Uma sessão autenticada que já esteja aberta, inclusive uma janela visível usada na emissão assistida, é reutilizada; quando não há sessão válida, a abertura é invisível e depende da auto-seleção do certificado.
 
-## Como usar
-
-Acesse `/nfse` e siga os passos da página:
-
-1. **Importar** o extrato do banco (CSV do Banrisul e/ou PDF do Inter, um ou vários de uma vez).
-2. **Resolver** o que ficou pendente: vínculo empresa→CNPJ, descrição do serviço e propostas de agrupamento.
-3. **Abrir o portal** e conferir a alíquota (uma vez por sessão).
-4. **Escolher o modo** e emitir. Nos modos assistidos, o sistema para na tela de revisão de cada nota. **O clique em emitir é seu**.
 
 ## Revisão pré-emissão da API nacional (P3-A)
 

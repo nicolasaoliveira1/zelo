@@ -92,18 +92,6 @@
 - **Produtividade:** página `/produtividade` com emissões/dia, taxa de sucesso por tipo e tempo médio de lote (30/90 dias), com exportação em Excel.
 - **Relatórios:** página `/relatorios` com indicadores e distribuição por status/tipo, pendências detalhadas com rankings por tipo e município, as últimas 100 certidões emitidas, o último lote por tipo × escopo (com modal de rendimento) e o gráfico de evolução por status.
 
-## Como usar
-
-1. Faça login com um usuário existente (o primeiro admin é criado por `flask criar-admin`). Sem sessão, todas as páginas redirecionam para o login.
-2. Acesse a tela de nova empresa em `/empresa/nova` e cadastre a empresa com CNPJ, cidade e estado.
-3. No dashboard: **Emitir** para automações suportadas, **Abrir Site** quando o fluxo for assistido, **Visualizar** para abrir o PDF salvo.
-4. Acesse `/empresas` para gerenciar cadastro, edição e remoção com confirmação.
-5. Para lotes:
-   - FGTS: fluxo de lote quando houver mais de 1 item elegível.
-   - Estadual RS: lote com controles de pausar, retomar e parar.
-   - Municipal (Imbé e Tramandaí): lote com as mesmas ações; resolve captcha de imagem via 2captcha no Imbé.
-   - Trabalhista: lote quando houver mais de 1 item elegível; resolve captcha de imagem via 2captcha.
-6. Em `/diagnostico/municipios`, rode o dry-run quando desconfiar que um portal municipal mudou. Ele valida os seletores sem emitir nada.
 
 ## Limitações atuais
 

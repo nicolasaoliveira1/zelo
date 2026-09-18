@@ -108,7 +108,7 @@ Módulos publicados inteiros, com o raciocínio junto. Cada um roda sozinho.
 - [Certidões fiscais](docs/CERTIDOES.md) — automação por tipo, lotes, agendador e relatórios
 - [NFS-e de honorários](docs/NFSE.md) — do extrato bancário à nota emitida
 - [Manifestador de NF-e](docs/MANIFESTADOR.md) — cofre de certificados, chaves de acesso e manifestação pelo webservice
-- [Instalação e configuração](docs/OPERACAO.md) — requisitos, `.env`, Docker, observabilidade e testes
+- [Arquitetura](docs/ARQUITETURA.md) — estrutura do projeto, observabilidade e a paridade de banco no CI
 
 ## Licença
 

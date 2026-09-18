@@ -57,14 +57,6 @@ garante.
 - **Rejeição da SEFAZ não abre o *circuit breaker***: se ela devolveu um código, está no ar — o problema é a nota, e parar o lote inteiro por causa de uma nota inválida jogaria fora as outras.
 - **Aviso de prazo**: chave com mais de 90 dias entra marcada, medindo do ponto mais tardio possível da autorização para nunca acusar nota que ainda está no prazo. É **aviso, não recusa**.
 
-## Como usar
-
-Acesse `/manifestador` e siga a página:
-
-1. **Conferir o cofre** (uma vez por mês, ou quando um certificado for renovado): a régua do topo mostra quantas empresas estão prontas e o que falta nas demais.
-2. **Adicionar as chaves**: colar as do scanner, ou arrastar as pastas de XML do mês. A lista mostra cada pasta com a contagem de arquivos — **confira as contagens antes de importar**.
-3. **Escolher o evento** e o modo (uma nota, uma empresa, a carteira).
-4. **Manifestar.** Pausar, retomar e parar funcionam durante o lote.
 
 ## Limitações atuais
 
