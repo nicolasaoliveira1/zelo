@@ -1,0 +1,374 @@
+# Instalação, configuração e operação
+
+> Como subir o Zelo, o que configurar e onde olhar quando algo quebra.
+> As funcionalidades estão em [CERTIDOES.md](CERTIDOES.md) e [NFSE.md](NFSE.md).
+
+## Requisitos
+
+- Python 3.10+
+- Node.js 22+ e npm (somente para verificações e testes do frontend)
+- Google Chrome
+- MySQL (recomendado para produção) ou SQLite (desenvolvimento)
+
+## Instalação
+
+1. Clone o repositório:
+
+```powershell
+git clone https://github.com/nicolasaoliveira1/zelo-certidoes.git
+cd zelo-certidoes
+```
+
+2. Crie e ative o ambiente virtual:
+
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+
+3. Instale as dependências:
+
+```powershell
+pip install -r requirements.txt
+```
+
+4. Copie `.env.example` para `.env` e ajuste os valores (ver [Variáveis de ambiente](#variáveis-de-ambiente)).
+
+5. Rode as migrations:
+
+```powershell
+flask db upgrade
+```
+
+6. Crie o primeiro administrador (só é possível criar um admin por CLI; a senha é solicitada de forma interativa):
+
+```powershell
+flask criar-admin --username chefe
+```
+
+> Depois, novos usuários podem ser criados pela CLI (`flask criar-usuario --username ana --papel operador`) ou pela tela `/admin/usuarios`.
+
+7. Inicie a aplicação:
+
+```powershell
+python run.py
+```
+
+Acesso local: http://localhost:5000 (faça login com o admin criado acima)
+
+> **Atalho no Windows:** dê um duplo clique em `iniciar.bat` na pasta do projeto. Ele ativa o `venv`, garante as dependências (`pip install -r requirements.txt`, idempotente) e sobe o app. Se faltar alguma dependência crítica (ex.: `undetected-chromedriver`), o `run.py` aborta o boot com uma mensagem clara em vez de subir quebrado.
+
+## Variáveis de ambiente
+
+```env
+# Obrigatória
+SECRET_KEY=uma_chave_segura
+
+# Banco (escolha um)
+# DATABASE_URL=mysql+pymysql://usuario:senha@host/banco
+# DATABASE_URL=sqlite:///instance/database.db
+
+# Caminho de rede (opcional; também configurável na tela de Configurações,
+# que tem precedência sobre esta variável)
+# CAMINHO_REDE=Z:\\PASTAS EMPRESAS
+
+# Perfil do Chrome (opcional)
+# CHROME_PROFILE_DIR=C:\CertidoesPython\chrome-profile
+# CHROME_PROFILE_NAME=Certidoes
+
+# Perfil dedicado dos municípios IPM Atende.Net (undetected-chromedriver, opcional)
+# CHROME_PROFILE_MUNICIPAL_DIR=C:\CertidoesPython\chrome-profile-municipal
+# Força o major do Chrome para o undetected-chromedriver (opcional; por padrão é
+# detectado automaticamente do Chrome instalado). Use se a auto-detecção falhar.
+# CHROME_UC_VERSION_MAIN=149
+
+# Certificado Estadual RS (opcional)
+# SUBJECT é a chave (não muda na renovação); ISSUER é apenas o fallback.
+# RS_CERT_AUTOSELECT_ENABLED=true
+# RS_CERT_AUTOSELECT_PATTERN=https://www.sefaz.rs.gov.br
+# RS_CERT_AUTOSELECT_POLICY_INDEX=1
+# RS_CERT_AUTOSELECT_ISSUER_CN=AC emissora
+# RS_CERT_AUTOSELECT_SUBJECT_CN=Titular CPF
+
+# Certificado da NFSe / Emissor Nacional (opcional; sem isso o Chrome abre o
+# diálogo de certificado e o operador escolhe à mão).
+# Use um POLICY_INDEX diferente do RS: são certificados distintos e as duas
+# políticas precisam conviver. ISSUER e SUBJECT são ambos obrigatórios.
+# NFSE_CERT_AUTOSELECT_ENABLED=true
+# NFSE_CERT_AUTOSELECT_PATTERN=https://certificado.nfse.gov.br
+# NFSE_CERT_AUTOSELECT_POLICY_INDEX=2
+# NFSE_CERT_AUTOSELECT_ISSUER_CN=AC emissora
+# NFSE_CERT_AUTOSELECT_SUBJECT_CN=Titular CNPJ
+
+# ALTCHA RS em lote (opcional)
+# RS_ALTCHA_AUTOSOLVE_ENABLED=true
+# RS_ALTCHA_MANUAL_FALLBACK=true
+# CAPTCHA_2_API_KEY=sua_chave
+# CAPTCHA_2_DEFAULT_TIMEOUT=180
+# CAPTCHA_2_POLLING_INTERVAL=10
+# CAPTCHA_2_SERVER=2captcha.com
+# CAPTCHA_2_SALDO_MINIMO=2.0
+
+# Agendador da emissão proativa (opcional; liga/desliga e hora também no painel)
+# AGENDADOR_ENABLED=true
+
+# Resiliência operacional (opcional; valores padrão entre parênteses)
+# BREAKER_LIMIAR=3                  # falhas seguidas que pausam um portal (3)
+# BREAKER_JANELA_MINUTOS=60         # quanto tempo o portal fica pausado (60)
+# PORTAL_PING_TTL_MINUTOS=5         # cache do semáforo de saúde no painel (5)
+# PORTAL_PING_TIMEOUT_S=6           # teto de espera de cada checagem (6)
+
+# Notificações por e-mail (opcional; sem SMTP_HOST/SMTP_FROM o envio é ignorado com aviso)
+# SMTP_HOST=smtp.seuprovedor.com
+# SMTP_PORT=587
+# SMTP_USER=usuario
+# SMTP_PASSWORD=senha
+# SMTP_FROM=certidoes@seuescritorio.com
+# SMTP_USE_TLS=true
+# SMTP_TIMEOUT=20
+# NOTIF_DIGEST_ENVIAR_VAZIO=true
+# NOTIF_ALERTA_JANELA_HORAS=24
+
+# Captura de contexto na falha Selenium (screenshot + HTML em logs/selenium)
+# SELENIUM_CAPTURE_ENABLED=true
+# SELENIUM_CAPTURE_DIR=logs/selenium
+# SELENIUM_CAPTURE_RETENCAO_DIAS=14
+```
+
+## Rodar com Docker (dev/reprodutibilidade)
+
+Ambiente de desenvolvimento reprodutível com **app + MySQL** em um comando, independente do Windows/`iniciar.bat`. A automação Selenium/Chrome **não** roda no container (fica no host, com certificado e unidade de rede `Z:`); o compose serve a UI e os dados sobre um MySQL igual ao de produção (8.0, `utf8mb4`/`utf8mb4_0900_ai_ci`).
+
+```bash
+cp .env.docker.example .env.docker   # ajuste SECRET_KEY / senha de dev (sem segredo real versionado)
+docker compose --env-file .env.docker up
+```
+
+- `db`: MySQL 8.0 com volume nomeado `mysql_data` (dados persistem entre `up`/`down`).
+- `web`: build do `Dockerfile` (`python:3.12-slim`); o schema é criado pelas **migrations** no boot (`AUTO_DB_UPGRADE=1`), não por `create_all`. App em http://localhost:5000.
+- O `.env.docker` real é ignorado pelo git; só o `.env.docker.example` é versionado.
+
+## Configurações importantes
+
+### Caminho de rede para salvar certidões
+
+O caminho base onde os PDFs das empresas são organizados pode ser definido de duas formas (nesta ordem de precedência): pela tela de **Configurações** (campo "Caminho de rede", salvo no banco) ou pela variável de ambiente `CAMINHO_REDE`. Sem nenhum dos dois, usa o padrão `Z:\PASTAS EMPRESAS`.
+
+### PDF com leitura inconclusiva
+
+Se o sistema não conseguir ler o PDF recém-baixado, ele preserva a certidão anterior, descarta
+somente a entrada que não pôde ser lida e responde com conflito para permitir uma nova tentativa.
+Esse caso não marca a certidão como **PENDENTE** e não deve ser tratado como uma reprovação fiscal;
+primeiro corrija a indisponibilidade do arquivo ou do caminho de rede e tente novamente.
+
+### Remoção e inativação de empresas
+
+A remoção de uma empresa é recusada quando ela possui manifestação em andamento, manifestação com
+desfecho fiscal ou protocolo registrado. A tela informa a quantidade encontrada, registra a tentativa
+na auditoria e oferece **Inativar empresa** como alternativa.
+
+Para tirar uma empresa da operação, um administrador pode inativá-la no detalhe da empresa. A empresa
+inativa permanece na carteira e o histórico continua consultável em `/manifestador/chaves`, mas ela
+fica fora de novos lotes, da fila, do agendamento, do cofre operacional e de novas manifestações.
+Quando for necessário retomar a operação, use **Reativar empresa** no mesmo detalhe. A cascata de
+remoção continua destinada apenas a trabalho sem desfecho; histórico fiscal não é apagado pela saída
+do cadastro.
+
+### Ambiente da manifestação de NF-e
+
+O destino dos eventos do Manifestador é definido pela variável de implantação
+`MANIF_AMBIENTE_SEFAZ`. Os valores aceitos são `producao` e `homologacao`; espaços nas pontas e
+diferenças entre maiúsculas e minúsculas são normalizados. Quando a variável está ausente ou
+vazia, o padrão continua sendo `producao`.
+
+Um valor inválido, como `prod` ou `hml`, registra um erro no boot e aparece como configuração
+inválida na tela do Manifestador. A escrita fiscal é recusada antes de preparar o evento, ler o
+certificado ou abrir a rede. Corrija a variável e reinicie a aplicação.
+
+### Certificado digital (Estadual RS e NFSe)
+
+Os dois fluxos que exigem certificado usam a política `AutoSelectCertificateForUrls` do Chrome para escolher o certificado sem exibir o diálogo. Cada um declara o seu conjunto completo (padrão de URL, índice no registro, issuer e subject) e **nada é herdado do outro**: o RS usa um e-CPF e a NFSe um e-CNPJ.
+
+- Use um `POLICY_INDEX` **diferente** para cada fluxo. Eles convivem, e reutilizar o mesmo índice faria um sobrescrever a política do outro.
+- O **`SUBJECT_CN` é a variável que importa**: é a chave de busca no repositório de certificados do Windows e é o dado que **não muda** na renovação (nome do titular + CPF/CNPJ). Copie-o exatamente como aparece no CN do certificado, incluindo o número depois dos dois-pontos.
+- O **`ISSUER_CN` é só o fallback**, usado quando o certificado não está instalado na máquina. Na renovação a AC emissora costuma mudar, então o valor do `.env` envelhece sozinho — por isso o issuer é descoberto a cada ativação, e não lido do `.env` quando há certificado instalado.
+- A escolha, quando há mais de um certificado com o mesmo titular, é: **dentro da validade**, **com chave privada**, e entre os que sobram vence o de **vencimento mais distante** (o recém-renovado). O vencido fica de fora, e a política gravada continua com issuer + subject — o filtro não é afrouxado.
+- Sem essas variáveis o fluxo continua funcionando: o Chrome passa a pedir o certificado na tela, e o operador escolhe.
+
+**"O lote parou na tela 'Selecione um certificado'"** — é o sintoma de a política não casar com nenhum certificado, e não gera erro no log da automação (o lote fica só esperando um clique). Procure no log por:
+
+- `cert_store_issuer_resolvido` — achou; o campo `issuer_cn` mostra qual AC foi usada.
+- `cert_store_sem_certificado_valido` — **nenhum** certificado válido para aquele subject: o certificado venceu e o novo ainda não foi instalado, ou o `SUBJECT_CN` está escrito diferente do CN real. Confira com o PowerShell:
+
+  ```powershell
+  Get-ChildItem Cert:\CurrentUser\My | Select-Object Subject, Issuer, NotAfter
+  ```
+
+- `cert_store_issuer_ambiguo` — mais de um certificado válido para o mesmo titular, com emissores diferentes; o log mostra o escolhido e os descartados.
+
+### Estadual RS e 2captcha
+
+- A integração usa API backend, sem extensão no Chrome.
+- Se a chave estiver inválida, o lote RS encerra com erro explícito para evitar tentativas improdutivas.
+- Se alterar variáveis no `.env`, reinicie a aplicação.
+
+### Limite de "a vencer"
+
+Na tela de Configurações, é possível ajustar o limite de dias para uma certidão ficar "a vencer" (1 a 90 dias). Há um valor **padrão** (aplicado a todos os tipos) e limites **opcionais por tipo** (Federal, FGTS, Estadual, Municipal e Trabalhista) que sobrepõem o padrão quando preenchidos. O limite efetivo afeta dashboard, relatórios e lotes.
+
+### Municípios
+
+As automações municipais dependem da configuração de seletores e steps na tabela Município. Para novas cidades, é necessário mapear o portal e registrar a configuração correspondente (URL, seletores e `config_automacao`).
+
+Portais **IPM Atende.Net** (URL `*.atende.net`, como Gravataí/Osório/Novo Hamburgo) são roteados automaticamente para o `undetected-chromedriver` com perfil persistente próprio (`CHROME_PROFILE_MUNICIPAL_DIR`, padrão `chrome-profile-municipal/`, isolado do perfil do RS/Federal). No primeiro acesso com o perfil "frio", o bloqueio do portal pode aparecer uma vez até o operador desbloquear manualmente; depois o cookie de confiança persiste no perfil e os próximos acessos fluem.
+
+### Captura de contexto na falha Selenium
+
+Quando uma automação Selenium quebra (tipicamente porque um portal mudou de estrutura), o sistema salva automaticamente um screenshot e o HTML da página em `logs/selenium/` para acelerar o diagnóstico. Controlado por `SELENIUM_CAPTURE_ENABLED` (padrão ligado), com limpeza por retenção (`SELENIUM_CAPTURE_RETENCAO_DIAS`, padrão 14 dias).
+
+## Observabilidade e diagnóstico
+
+- Logs com **saída dupla**: console legível para humano (hora, nível, domínio, evento, campos-chave e `req_id`, com cor por nível) e arquivo `logs/app.jsonl` rotativo com o JSON cru.
+- `request_id` por requisição HTTP e `execution_id` por execução de lote; as respostas HTTP incluem o header `X-Request-Id` para correlacionar logs e requisições.
+- Taxonomia de erros (`TIMEOUT`, `CAPTCHA`, `PORTAL`, `SELECTOR`, `NETWORK_PATH`, `PERMISSION`, `DB`, `UNKNOWN`) traduzida em **mensagens acionáveis** (título + causa + ação) que chegam ao usuário no toast e carregam `error_type`/`acao` no JSON.
+- **Pré-checagens (preflight)** antes de emitir/lote: valida rede, perfil do Chrome e solver, falhando cedo com mensagem clara em vez de quebrar no meio do Selenium.
+- **Detector de padrões recorrentes**: o mesmo erro repetido no mesmo alvo abre um alerta com hipótese (provável seletor quebrado/portal fora).
+- **Painel de diagnóstico** em `GET /diagnostico`: últimos erros/avisos (histórico persistido em banco via `DIAGNOSTICO_PERSISTIR`, retenção por `DIAGNOSTICO_RETENCAO_DIAS`) e alertas de recorrência.
+- **Painel de municípios** em `GET /diagnostico/municipios`: estado da automação de cada município, com dry-run sob demanda.
+- **Contratos dos portais** em `GET /diagnostico` (seção "Contratos dos portais", perfil admin): estrutura aprovada de cada portal com contrato adaptativo, incidentes abertos e histórico de versões. **Verificar agora** só observa a tela do portal — não preenche, não resolve captcha e não emite. Ativar uma versão muda o que a automação obedece e por isso pede confirmação; se houver emissão em curso no mesmo portal, a ação é recusada (HTTP 423) em vez de atrapalhar o lote.
+- Um job diário do agendador (`agendador_recon_portais`, deslocado 2h20 da hora configurada) faz a mesma observação sozinho, para a mudança de layout aparecer antes da primeira emissão do dia. Roda mesmo com a renovação automática desligada, porque não emite nem consome captcha.
+- **Saúde composta dos portais** em `GET /diagnostico/portais` (admin): `estado` informa apenas se o portal respondeu ao ping ou ao último dry-run; `contrato_estado` informa `compativel`, `autoajustado`, `bloqueado` ou `desconhecido`; `pronto_para_automatizar` combina essas dimensões com o circuit breaker. O `GET /health?detalhado=1` é separado e cobre somente a infraestrutura da aplicação.
+- Retry com limite e backoff em pontos recuperáveis (ex.: timeout de carregamento e leitura de caminho de rede).
+- **Health check** em `GET /health`: retorna `ok` ou `degraded` com detalhes de banco de dados, caminho de rede (incluindo leitura e escrita), profile do Chrome e configuração do solver.
+- Para ajustar verbosidade/saída, use `LOG_LEVEL`, `QUIET_WERKZEUG_LOGS`, `LOG_CONSOLE_FORMAT` (`human`/`json`) e `LOG_JSON_FILE` no `.env`. Para reduzir ruído local, logs HTTP de estáticos/polling são filtrados e o log padrão fica em nível `WARNING`.
+
+### Runbook da recon adaptativa
+
+O contrato ativo é a versão que governa o alvo. O preflight observa e fixa essa versão antes de
+preencher documento ou consumir captcha; uma mudança descoberta depois do pinning só vale para a
+próxima execução. A ausência de contrato ativo é o desligado daquele alvo e preserva o executor
+legado durante o rollout.
+
+Alvos atualmente registrados no núcleo:
+
+| Alvo | Adaptador | Rollout e fallback |
+| --- | --- | --- |
+| Trabalhista/CNDT | piloto | contrato ativo obrigatório para o caminho adaptativo; sem ele, executor legado |
+| Municipal | município/variante | entra explicitamente quando a configuração fechou; dry-run legado só é aposentado após cobertura da variante |
+| FGTS | `fgts` | contrato independente; sem contrato ativo, mapa legado |
+| Estadual RS | `estadual/rs` | contrato independente; sem contrato ativo, fluxo legado |
+| Federal, Estadual SP/MT/MS e demais UFs sem adaptador | nenhum | permanecem assistidos ou legados; não recebem proteção parcial |
+
+Quando um alvo aparece como `bloqueado`:
+
+1. Pare de repetir a emissão e abra `/diagnostico/contratos-portais` como admin.
+2. Leia o incidente e use **Verificar agora** para uma observação passiva recente. Essa ação não
+   preenche, resolve captcha, submete nem baixa documento.
+3. Só use **Revisar e ativar** depois da confirmação explícita e da reobservação da mesma estrutura.
+   **Manter a versão atual** encerra a candidata sem trocar o contrato. `Restaurar` cria uma nova
+   versão a partir do histórico; `Descartar contrato` arquiva a ativa e volta ao executor legado.
+4. Depois de uma correção, confirme no painel que o contrato deixou `bloqueado` antes de iniciar
+   um lote. O circuit breaker continua sendo alimentado apenas pelo preflight da execução real;
+   o recon antecipatório não abre breaker.
+
+Os eventos `contrato_portal_preflight` e `contrato_portal_recon_resultado` são a métrica operacional
+do motor: carregam fluxo, alvo canônico, resultado, `duracao_ms`, versão, origem (`usuario` ou
+`sistema`) e `execution_id` quando houver. Fingerprints são truncados; não entram CNPJ, empresa,
+valor, captcha, HTML bruto ou valores de formulário. Agregue por fluxo/alvo/resultado, nunca por
+cliente.
+
+Retenção e privacidade seguem esta divisão:
+
+- versões, incidentes, diferenças e artefatos sanitizados do contrato são histórico estruturado e
+  não têm prune automático; o artefato sanitizado contém metadados da estrutura, nunca formulário,
+  captcha ou documento;
+- o histórico geral de diagnóstico é podado por `DIAGNOSTICO_RETENCAO_DIAS` (padrão: 30 dias);
+- screenshots e HTML capturados em falhas Selenium ficam em `SELENIUM_CAPTURE_DIR` e são podados
+  por `SELENIUM_CAPTURE_RETENCAO_DIAS` (padrão: 14 dias); não são baseline nem evidência para
+  ativação e não devem ser versionados;
+- `logs/app.jsonl` é saída operacional rotativa. Para investigação, correlacione `request_id` ou
+  `execution_id` sem copiar dados de cliente para tickets, fixtures ou documentação.
+
+## Testes e CI
+
+- Suíte `pytest` (`pip install -r requirements-dev.txt` + `pytest -q`).
+- Frontend: `npm ci`, `npm run js:syntax`, `npm run js:types` e `npm test`.
+- **CI com paridade de banco** (GitHub Actions, workflows separados):
+  - `testes-sqlite`: lint (`ruff`) + suíte em SQLite (gate rápido) em todo PR e push na `main`.
+  - `testes-mysql`: suíte inteira contra **MySQL 8.0** (service container, `utf8mb4`/`utf8mb4_0900_ai_ci`) quando há alteração de backend, banco ou testes, além de execução noturna e manual. O job também valida a **migração idempotente** (`upgrade → downgrade → upgrade`).
+- Localmente, aponte a suíte para outro banco com `TEST_DATABASE_URL` (sem a variável, usa SQLite).
+- Os fluxos Selenium não são exercitados pelos testes automatizados (o navegador é substituído por mocks); para eles existe um roteiro de verificação manual.
+- Os testes JavaScript usam dados sintéticos, `node:test` e `jsdom`; não acessam portais, certificados, Selenium nem serviços externos.
+
+### Guarda do banco da suíte
+
+O `tests/conftest.py` cria um SQLite temporário por worker quando
+`TEST_DATABASE_URL` não está definido. Antes de criar o schema, limpar dados ou destruir o
+schema, o harness compara o `db.engine.url` real com o destino autorizado e confere a sentinela
+`zelo_harness_sentinela`, criada pelo próprio harness. Isso protege também o caso em que um
+lançador importou o app antes do `conftest`: a coleta falha antes do primeiro DDL ou `DELETE`, e
+a mensagem mostra encontrado e esperado com as senhas mascaradas.
+
+O opt-in MySQL só aceita `mysql.../sistema_certidoes_test` ou o banco do worker com sufixo
+`_gw0`, `_gw1` e assim por diante. Um nome diferente falha antes de `create_engine`, `DROP
+DATABASE` ou `CREATE DATABASE`; a mensagem não expõe a senha. O job do CI fornece a URL base e o
+harness cria um banco descartável separado para cada worker, mantendo a colação
+`utf8mb4_0900_ai_ci`.
+
+Quando a guarda reprovar, interrompa a execução e confira o comando e as variáveis no mesmo
+processo que chama o pytest. Limpe `DATABASE_URL`, `TEST_DATABASE_URL` e `PYTEST_XDIST_WORKER`
+herdados por engano, e rode a suíte pelo Python do `venv` no Windows. Não tente continuar sobre o
+destino apontado pela mensagem e não rode migration para contornar a falha; sem
+`TEST_DATABASE_URL`, uma nova base SQLite temporária é criada automaticamente.
+
+Rede de saída e criação de Chrome ficam bloqueadas por padrão. Um teste que realmente precise
+exercitar uma dessas fronteiras deve declarar, no próprio teste, `@pytest.mark.permite_rede` ou
+`@pytest.mark.permite_chrome` e continuar usando dados sintéticos quando o transporte não for o
+objeto da verificação. O dotenv é desativado no processo de testes e `AUTO_DB_UPGRADE=0`; o
+round-trip de migration é uma verificação explícita do CI, separada da criação da aplicação.
+
+## Estrutura do projeto
+
+```text
+.
+  config.py
+  run.py                     # Entrypoint; aborta o boot se faltar dependência crítica
+  iniciar.bat                # Atalho Windows: venv + deps + run.py
+  requirements.txt
+  docs/                      # Documentação (context.json é a fonte de verdade da estrutura)
+  migrations/                # Alembic
+app/
+  __init__.py                # Inicialização Flask (factory create_app)
+  routes/                    # Rotas por domínio, todas no blueprint 'main'
+    __init__.py              #   core: bp, hooks, dashboard, /api/pendencias, /health, /diagnostico*
+    empresas.py              #   rotas de empresa
+    certidoes.py             #   /certidao/* (baixar delega a emissao_service)
+    lotes.py                 #   factory de rotas de lote + fluxos do agendador
+    relatorios.py            #   /relatorios, /configuracoes, exportação
+    nfse.py                  #   /nfse/* (importação, resolução, sessão e lote assistido)
+  auth.py                    # Login/papéis (deny-by-default) + painéis admin
+  cli.py                     # Comandos CLI (criar-admin / criar-usuario)
+  models.py                  # Modelos do banco
+  captcha_solver.py          # Integração 2captcha (ALTCHA e captcha de imagem)
+  file_manager.py            # Detecção/movimentação de PDFs
+  errors.py                  # Taxonomia de erros + mensagens acionáveis
+  utils.py                   # Utilitários compartilhados (inclui validação de CPF/CNPJ)
+  automation/                # Pacote de automação
+    sites.py                 #   URLs, seletores e validades padrão
+    driver.py                #   WebDriver Chrome/undetected-chromedriver
+    cert_policy.py           #   Núcleo da auto-seleção de certificado (RS e NFSe)
+    steps.py                 #   Steps municipais data-driven
+    pdf.py                   #   Leitura/classificação de PDF
+    emissao.py               #   Emissão por tipo (FGTS/Estadual RS/Municipal/Trabalhista)
+    captcha_img.py           #   Núcleo de captcha de imagem (Imbé e CNDT)
+    trabalhista.py           #   Fluxo CNDT/TST
+    nfse.py                  #   Emissor Nacional de NFS-e (login, etapas do DPS, detectores)
+    nfse_emitidas.py         #   Leitura da tela de NFS-e emitidas do portal
+    capture.py               #   Screenshot + HTML na falha Selenium
+    batch_state.py           #   Estado e locks compartilhados dos lotes
+  services/                  # Camada de serviços (motor de lotes, agendador, notificações,
+                             #   exportação, observabilidade, importação e emissão de NFS-e,
+                             #   circuit breaker por portal e saúde dos portais)
+  static/                    # CSS, imagens e JS por página (ES modules, sem bundler)
+  templates/                 # Jinja2
+```
