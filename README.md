@@ -1,8 +1,8 @@
 <div align="center">
 
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/zelo-lockup-dark.png">
-    <img src="docs/zelo-lockup-light.png" width="369" alt="Zelo. Regularidade sob controle." />
+    <source media="(prefers-color-scheme: dark)" srcset="docs/zelo-blink-dark.svg">
+    <img src="docs/zelo-blink-light.svg" width="340" alt="Zelo" />
   </picture>
 
 
