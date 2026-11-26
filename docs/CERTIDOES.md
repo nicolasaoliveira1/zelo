@@ -96,7 +96,7 @@
 
 ## Exportação e relatórios
 
-- **Exportar carteira (Excel):** botão no dashboard baixa uma planilha `.xlsx` **respeitando os filtros ativos** (status, tipo, estado, cidade). Sai exatamente o que está na tela.
+- **Exportar carteira (Excel):** botão na tela de Certidões baixa uma planilha `.xlsx` **respeitando os filtros ativos** (status, tipo, estado, cidade). Sai exatamente o que está na tela.
 - **Dossiê (PDF) por empresa:** um único PDF com capa + as certidões **válidas** concatenadas, pronto para licitação/cliente (papel operador). PDF ausente/corrompido é pulado com aviso.
 - **Produtividade:** página `/produtividade` com emissões/dia, taxa de sucesso por tipo, tempo médio de lote (30/90 dias) e a lista de empresas que falharam, com o motivo legível e o que fazer; exportação em Excel.
 - **Relatórios:** página `/relatorios` com indicadores e distribuição por status/tipo, pendências detalhadas com rankings por tipo e município, as últimas 100 certidões emitidas, o gráfico de evolução por status.
