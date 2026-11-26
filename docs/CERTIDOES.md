@@ -11,12 +11,16 @@
 - Proteção CSRF em todos os formulários; senhas com hash forte.
 - **Trilha de auditoria**: ações sensíveis (login, criação/alteração de usuário, etc.) ficam registradas e são consultáveis em `/admin/auditoria` (admin).
 - Gestão de usuários em `/admin/usuarios` (admin). O primeiro administrador é criado por linha de comando (não há auto-cadastro público).
+- O login confere usuário e senha **sempre**, mesmo com sessão aberta no navegador; a sessão expira após 12 h sem uso.
+- Toda resposta sai com cabeçalhos de segurança (`X-Frame-Options`, `nosniff`, política de referência). Atrás do túnel do Cloudflare, os cookies saem com `Secure` e o IP real do cliente vale para o limite de tentativas e a auditoria.
 
-## Dashboard e operação
+## Visão geral e operação
+
+- **Visão geral** (`/`): um número por pilar (certidões que pedem atenção, NF-e a manifestar, NFS-e para tratar, certificados A1 que vencem em 30 dias) e a **Central de operações** — pendências e alertas em ordem de gravidade, próximos vencimentos de certificado, a atividade das automações nos últimos 7 dias e o resultado da última execução por tipo. Dado que não carregou aparece como indisponível, nunca como zero.
 
 - Cadastro de empresa com criação automática de 5 certidões.
 - Filtros por status e busca por nome em tempo real.
-- Status visual de certidões (a única cor da interface):
+- Status visual de certidões (cor reservada ao estado; o acento verde-petróleo é só para ação):
   - Verde: válida
   - Âmbar: a vencer (limite configurável, global ou por tipo de certidão)
   - Vermelho: vencida
@@ -24,7 +28,9 @@
   - Cinza: sem data definida
 - Cadastro de nova empresa com seleção de cidade via dropdown (apenas municípios cadastrados) e inscrição mobiliária condicional (Imbé).
 - Tela de Empresas com listagem, filtros, edição e remoção com confirmação.
-- Sidebar responsiva com estado persistente.
+- Toda certidão pendente guarda **o motivo** (positiva, FGTS com impedimento, em processamento no portal, portal não emitiu, marcada à mão, município ou UF mudou…). Mudar a cidade ou a UF da empresa deixa pendentes as certidões que dependem do endereço, para entrarem no próximo lote.
+- Consulta de CNPJ **na hora** pela API comercial da CNPJá, com confirmação que mostra o saldo de créditos antes e depois.
+- Barra do topo com os pilares no centro e o menu Sistema; navegação sem piscar (fontes pré-carregadas e cache de estáticos).
 - Tema claro/escuro com persistência local.
 
 ## Automação de emissão
@@ -61,6 +67,8 @@
 - Honesto sobre o que não deu para ver: passos que dependeriam do clique de emissão são reportados como não verificados, em vez de contados como aprovados. Portal com captcha vira "parcial" (não gasta crédito de solver).
 - **Roda sozinho todo dia**, em horário deslocado do lote de emissão, e dispara alerta quando um município passa a falhar.
 - **Painel em `/diagnostico/municipios`** com o estado de cada município e botão para rodar o dry-run sob demanda.
+- **Passo `recaptcha`** no fluxo municipal: lê a chave do reCAPTCHA v2 na página, resolve no 2captcha e entrega o token ao callback do widget. O dry-run nunca executa esse passo, porque é pago.
+- **Estação do operador**: com as estações ligadas, a emissão individual roda no PC de quem pediu, não na tela do servidor. A estação fala com o servidor só pela API (HTTPS pelo domínio), com token próprio ligado ao usuário; recebe a tarefa, roda o mesmo núcleo de emissão num SQLite local descartável e devolve o PDF, que o servidor confere antes de promover. Instala-se pelo próprio Zelo (menu do avatar › **Instalar neste PC**), com checagem do PC e ícone na bandeja. Pelo acesso remoto, nada abre navegador no servidor.
 - Grafia das cidades padronizada (acento e caixa) com fonte única de canonicalização. O casamento no backend segue normalizado, então acento não quebra nada.
 
 ## Gestão de arquivos
@@ -69,6 +77,7 @@
 - Move e renomeia para a pasta final da empresa.
 - Salva caminho do arquivo no banco.
 - Visualização de PDF com token assinado e expirável.
+- **Arquivos da empresa pelo navegador**: "Abrir pasta" abre um painel lateral só de leitura, preso à pasta da empresa (caminho absoluto, `..` e link para fora respondem 404), com cada download registrado na auditoria. Funciona de qualquer PC e pelo domínio.
 - Download automático no Chrome (incluindo fluxos em modo anônimo), reduzindo necessidade de interação manual no diálogo de salvar.
 
 ## Emissão proativa (agendador)
@@ -89,8 +98,8 @@
 
 - **Exportar carteira (Excel):** botão no dashboard baixa uma planilha `.xlsx` **respeitando os filtros ativos** (status, tipo, estado, cidade). Sai exatamente o que está na tela.
 - **Dossiê (PDF) por empresa:** um único PDF com capa + as certidões **válidas** concatenadas, pronto para licitação/cliente (papel operador). PDF ausente/corrompido é pulado com aviso.
-- **Produtividade:** página `/produtividade` com emissões/dia, taxa de sucesso por tipo e tempo médio de lote (30/90 dias), com exportação em Excel.
-- **Relatórios:** página `/relatorios` com indicadores e distribuição por status/tipo, pendências detalhadas com rankings por tipo e município, as últimas 100 certidões emitidas, o último lote por tipo × escopo (com modal de rendimento) e o gráfico de evolução por status.
+- **Produtividade:** página `/produtividade` com emissões/dia, taxa de sucesso por tipo, tempo médio de lote (30/90 dias) e a lista de empresas que falharam, com o motivo legível e o que fazer; exportação em Excel.
+- **Relatórios:** página `/relatorios` com indicadores e distribuição por status/tipo, pendências detalhadas com rankings por tipo e município, as últimas 100 certidões emitidas, o gráfico de evolução por status.
 
 
 ## Limitações atuais

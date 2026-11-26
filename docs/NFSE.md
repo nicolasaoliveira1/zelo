@@ -24,11 +24,14 @@ agrupamento**. Enquanto a proposta espera resposta, as notas do grupo ficam **fo
 emitir a entrada bruta de R$ 2.000,00 com um estorno de R$ 1.784,00 pendurado nela é exatamente
 o erro que a proposta evita.
 
-Confirmar é **reversível**: confirmar e desfazer são simétricos e nada é destruído no caminho.
-O valor volta do valor original do extrato (imutável, o número que está no PDF) e descrição e
-pendência voltam do retrato guardado no momento do agrupamento.
+Confirmar e desfazer são **ações locais**: o valor original do extrato (imutável, o número que
+está no PDF), a descrição e a pendência ficam preservados para a restauração. A guarda fiscal pode
+recusar confirmação, desfazimento ou descarte quando algum membro já tem emissão ou tentativa que
+exige decisão; nesse caso, o grupo não muda. Resolva primeiro o desfecho da nota indicada pelo
+sistema e retome a ação somente se o estado resultante permitir. Se a emissão for confirmada, o grupo
+continua protegido: não confirme, desfaça nem descarte esse agrupamento.
 
-## Emissão: três modos, escolhidos a cada lote
+## Emissão pelo portal: três modos, escolhidos a cada lote
 
 - **Uma por vez**: preenche as três etapas do assistente DPS, para na tela de revisão e fecha o navegador quando a nota sai.
 - **Lista inteira**: o mesmo laço, mantendo a janela autenticada de ponta a ponta.
@@ -39,9 +42,13 @@ Nos dois primeiros modos, **a automação preenche e o operador emite**: quem cl
 nunca um padrão. Ele exige a auto-seleção válida do certificado da NFS-e antes de iniciar. Pausar,
 retomar, pular e parar funcionam durante a espera.
 
+Com a estação do usuário pronta, a assistida de **uma nota** abre o portal no Chrome do PC de quem
+pediu, não na tela do servidor; por isso ela também funciona pelo acesso remoto.
+
 - **Uma sessão de navegador para o dia todo**: o login por certificado digital e a conferência da alíquota do Simples acontecem uma vez, não a cada nota.
 - **Ninguém chuta se a nota saiu**: a confirmação é lida do portal, não da interface. Se o navegador for fechado no meio da revisão, a nota fica *aguardando confirmação* e o operador marca à mão. Os dois chutes erram em direções opostas (marcar emitida perde uma nota que não existe; marcar pendente reemite no mês seguinte uma nota que já existe).
-- **Ação em massa parcial por desenho**: o que der certo é aplicado e o que não der volta nomeado. Só entram ações reversíveis por um clique (cancelar, restaurar, marcar/desmarcar emitida manualmente). **Emitir e preencher ficam de fora**, por definição.
+- **Cancelar uma linha** só registra uma decisão na fila local: não cancela NFS-e na prefeitura nem chama o portal ou a SEFIN. A linha deixa de ser emitível e ocupa a competência; se o extrato for importado novamente, a decisão aparece como duplicidade. Restaurar é uma ação local reversível e reavalia a duplicidade. A aplicação recusa o cancelamento local quando a linha já foi confirmada como duplicata, está emitida, aguarda confirmação no portal, foi absorvida por outra nota (`agrupada`) ou tem uma operação fiscal protegida. Se a nota já existe no Emissor Nacional, trate qualquer cancelamento fiscal pelo procedimento oficial do emissor, fora desta ação.
+- **Ação em massa parcial por desenho**: recusas comuns de estado ficam nomeadas e as outras ações permitidas são aplicadas; bloqueio da guarda fiscal compartilhada ou falha de commit reverte o conjunto inteiro. Só entram ações reversíveis por um clique (cancelar/restaurar linha, marcar/desmarcar emissão manual). **Emitir e preencher ficam de fora**, por definição.
 
 ## O outro lado da conta: conferência do portal
 
@@ -58,34 +65,25 @@ pagamento**.
 
 ## Revisão pré-emissão da API nacional (P3-A)
 
-O cartão **Revisão pré-emissão** é um pré-voo local para uma nota nova. Ele existe para conferir
-os fatos e deixar os bloqueios visíveis antes de a API de produção ser liberada; não é uma emissão
-simulada nem uma autorização.
+O cartão **Revisão pré-emissão** confere localmente os fatos de uma nota nova antes do preparo da
+DPS de produção. Ele mostra os bloqueios e valida uma DPS candidata em memória; não reserva número,
+não assina nem envia a DPS e não autoriza a emissão.
 
 - A lista usa somente o veredito de nota emitível calculado pelo servidor. Informe manualmente
-  `dCompet`, que no perfil atual corresponde ao dia planejado da emissão, normalmente no fim do mês;
-  o campo começa vazio e não é derivado do mês de referência da fila. O montador futuro usará a data
-  efetiva de `dhEmi` para manter essa regra no XML.
+  `dCompet`, a data planejada da emissão; ela não é derivada do mês de referência da fila. O pré-voo
+  valida a DPS candidata com essa data, e o preparo usa a mesma data em `dhEmi`.
 - A resposta mostra tomador, endereço cadastral local, competência mensal, `dCompet`, valor,
   descrição, prestador, município, tributação, NBS, perfil IBS/CBS, retenções, ambiente e versão
   do XSD, além de cada prova e bloqueio.
-- O perfil decidido para a API informa IBS/CBS (`CST 200`, `cClassTrib 200052`, `cIndOp 100301`,
-  sem tratamento especial) e ISSQN tributável sem retenção. A prova estrutural da DPS continua
-  bloqueada até resolver os demais campos obrigatórios do grupo IBS/CBS e a compatibilidade do XSD;
-  uma revisão local apta ainda não autoriza emissão.
+- O pré-voo mostra o perfil IBS/CBS configurado e exige ISSQN tributável sem retenção. A prova
+  estrutural monta uma DPS candidata com número sintético e a valida contra o XSD de produção
+  versionado. Uma revisão local apta não reserva número, não assina nem envia a DPS.
 - Para `cIndOp 100301`, o pré-voo reaproveita o endereço já importado no cadastro local. Se o cadastro
   não tiver logradouro, número, bairro, CEP ou município IBGE, a revisão bloqueia; ela não consulta
   Receita, portal ou API para completar o dado automaticamente.
-- A ação lê somente o banco e o XSD versionado. Não monta XML final, não assina, não reserva
-  número, não consulta ADN/SEFIN/portal, não altera a nota e não oferece botão de envio.
-
-### Estado de prontidão
-
-O pré-voo local está pronto para conferência com dados sintéticos e o builder
-offline já monta a DPS nova em memória com `IBSCBS` completo para o perfil
-decidido. A emissão real ainda depende da compatibilidade estrutural do XSD,
-contador, assinatura, transporte e recuperação. A montagem local não envia,
-reserva número nem substitui a revisão humana.
+- A ação lê somente o banco e o XSD versionado. Monta a DPS candidata em memória com número
+  sintético para validar a estrutura, mas não assina nem reserva número. Não consulta ADN/SEFIN/portal,
+  não altera a nota e não oferece botão de envio.
 
 ## Ensaio restrito da API nacional (P2)
 
@@ -140,6 +138,50 @@ número, exclusivo para o ensaio. O Zelo aceita de 1 a 5 algarismos, no interval
 oficial. Se houver outra integração que gere DPS, confirme com quem a administra quais séries ela
 utiliza antes de escolher; depois do primeiro uso, mantenha a série configurada para preservar a
 sequência do contador.
+
+## Emissão pela API nacional em produção
+
+A emissão por API é um fluxo separado do portal Selenium. Há três modos: **uma nota**, escolhida pelo operador; **assistido**, que apresenta uma nota por vez e pede confirmação antes de cada envio; e **automático**, que exige autorização explícita para um escopo fechado e é processado pelo servidor.
+
+Em qualquer modo, a **preparação** revalida o pré-voo, reserva um número, monta e assina a DPS localmente e grava uma tentativa durável. Preparar não envia nada à SEFIN. O POST só começa após a confirmação de envio da nota ou, no automático, após a autorização do lote. Se uma edição aceita mudar os fatos usados na DPS depois do preparo, prepare outra DPS: o envio da tentativa desatualizada é recusado.
+
+No modo automático, o operador escolhe uma competência ou a última importação como escopo e informa `dCompet` no formato `AAAA-MM-DD`. A autorização congela a lista de notas aptas naquele momento e a data; notas importadas depois não entram nesse lote. `dCompet` é a data planejada para emissão, não a competência mensal do honorário, e também define a data usada em `dhEmi`. Bloqueios do pré-voo precisam ser resolvidos antes da autorização. O servidor mantém o progresso mesmo que a aba feche e interrompe o lote no primeiro desfecho que pede decisão. Se o lote ficar parado após reinício do servidor, retome ou encerre essa autorização antes de criar outra.
+
+A falha de um motor não aciona o outro. O fluxo de produção não troca para Selenium e o ensaio restrito não envia para produção.
+
+A tentativa conserva o XML da DPS assinada antes do envio. O [manual oficial da API do Emissor
+Público Nacional](https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/documentacao-atual/manual-contribuintes-emissor-publico-api-sistema-nacional-nfs-e-v1-2-out2025.pdf),
+seção 1.3.2, descreve que `POST /nfse` recebe a DPS e retorna o XML da NFS-e gerada com ela.
+No sucesso, o serviço confere o identificador informado pela SEFIN, a estrutura mínima do XML e se a
+chave retornada corresponde ao `Id` da NFS-e; então persiste o XML integral e a chave na mesma
+tentativa `EmissaoDpsNfse` e atualiza o espelho na mesma transação. O parser recusa XML
+descompactado acima de 20 MiB. No MySQL, os XMLs da tentativa usam `LONGTEXT`; no SQLite usam
+`TEXT`. Para a persistência funcionar em todo o limite aceito, o MySQL precisa de
+`max_allowed_packet` de pelo menos `128M`; a aplicação bloqueia a consulta à SEFIN ou o envio fiscal
+quando o limite global ou o da conexão estiver abaixo disso.
+A aplicação compara com a DPS enviada o identificador, o ambiente, tipo e documento do prestador e
+do tomador, a competência e o valor do serviço, além de conferir a coerência entre a chave retornada
+e o `Id` da NFS-e. Essa comparação é parcial: não cobre todos os campos da DPS incorporada, e a
+aplicação não verifica localmente a assinatura do XML da NFS-e recebida.
+
+Se a SEFIN confirmar a emissão, mas a nota da fila já estiver emitida por outro caminho ou não estiver
+mais disponível, a prova validada fica preservada na tentativa em `conflito_vinculo`, sem reescrever
+a nota ou o espelho conhecido. Só quando a emissão estiver confirmada pela fonte oficial, a linha
+local estiver marcada como emitida e a prova estiver completa, use **Reconciliar vínculo**: a ação
+registra a prova no espelho sem novo acesso à SEFIN nem alteração da linha. Se a linha não estiver
+disponível, a emissão não puder ser confirmada ou os fatos da prova divergirem, mantenha a tentativa
+pendente para análise e não prepare nem envie outra DPS. Respostas conflitantes são preservadas
+separadamente da prova já conhecida.
+
+Timeout ou resposta inconclusiva deixa a tentativa em `desfecho_desconhecido`; `enviando` também
+exige recuperação antes de outra ação. Use **Reconsultar resultado** na mesma tentativa: a consulta
+usa o identificador já enviado, não faz outro POST e não reserva outro número. Se a reconsulta ainda
+não comprovar o resultado ou encontrar divergência, mantenha o bloqueio e encaminhe a conferência;
+não repita o envio. A interface mostra o estado e a disponibilidade dos XMLs, não seu conteúdo bruto.
+
+A API não usa o Emissor Nacional via Selenium como fallback. Pré-voo, assinatura, envio, consulta e
+reconciliação têm ações separadas; o ambiente de produção é fixado no serviço, e a tela não aceita
+URL ou ambiente fiscal definidos pelo pedido HTTP.
 
 ## Limitações atuais
 

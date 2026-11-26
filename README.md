@@ -35,10 +35,10 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/dashboard-dark.png">
-    <img src="docs/dashboard-light.png" alt="Visão geral do Zelo — o que trava o trabalho hoje, o estado da carteira e o que a automação já fez sozinha" width="100%">
+    <img src="docs/dashboard-light.png" alt="Visão geral do Zelo — um número por pilar e a Central de operações: pendências, próximos vencimentos e a atividade das automações" width="100%">
   </picture>
   <br />
-  <sup><i>Visão geral: o que trava hoje, o estado da carteira e o que rodou no agendador. Dados de demonstração.</i></sup>
+  <sup><i>Visão geral: um número por pilar e a Central de operações, com o que resolver, o que vence e o que as automações fizeram na semana. Dados de demonstração.</i></sup>
 </div>
 
 ---
@@ -55,14 +55,14 @@ Um escritório contábil refaz, todo mês, o mesmo conjunto de tarefas com prazo
 
 **Zelo** automatiza esse ciclo de ponta a ponta, da consulta ao portal público até o PDF arquivado na pasta certa da empresa. Do lado dos clientes: controle visual de vencimentos, organização automática dos documentos e apoio ao acompanhamento de débitos, já que uma certidão pendente costuma sinalizar pendência na respectiva esfera fiscal ou trabalhista. Do lado do escritório: o extrato bancário vira as notas do mês sem redigitar cliente por cliente.
 
-O nome batiza o sistema de uso interno. A identidade é monocromática (grafite sobre papel) e reserva cor para uma coisa só: **o status da certidão**.
+O nome batiza o sistema de uso interno. A identidade é grafite sobre papel, com um único acento verde-petróleo para ação; cor de estado fica reservada para o que **pede atenção**.
 
 ## Os três pilares
 
 | Pilar | O que resolve | Documentação |
 | --- | --- | --- |
-| **Certidões fiscais** | Emissão e controle das certidões Federal, FGTS, Estadual, Municipal e Trabalhista, individual e em lote, sobre portais públicos reais (RFB, Caixa, SEFAZ RS, prefeituras, TST). Agendador diário emite o que está vencendo e avisa por e-mail. | [docs/CERTIDOES.md](docs/CERTIDOES.md) |
-| **NFS-e de honorários** | Do extrato bancário à nota emitida no Emissor Nacional: lê o CSV do Banrisul e o PDF do Inter, casa cada lançamento com o cliente e preenche o assistente até a tela de revisão. | [docs/NFSE.md](docs/NFSE.md) |
+| **Certidões fiscais** | Emissão e controle das certidões Federal, FGTS, Estadual, Municipal e Trabalhista, individual e em lote, sobre portais públicos reais (RFB, Caixa, SEFAZ RS, prefeituras, TST). Agendador diário emite o que está vencendo e avisa por e-mail; a emissão individual roda no PC do operador, pela estação. | [docs/CERTIDOES.md](docs/CERTIDOES.md) |
+| **NFS-e de honorários** | Do extrato bancário à nota emitida no Emissor Nacional: lê o CSV do Banrisul e o PDF do Inter, casa cada lançamento com o cliente e preenche o assistente até a tela de revisão, ou envia a DPS assinada direto pela API nacional. | [docs/NFSE.md](docs/NFSE.md) |
 | **Manifestador de NF-e** | Manifestação do destinatário direto no webservice da SEFAZ, sem navegador, sem `.jnlp` e sem o assinador Java, com cofre dos certificados A1 da carteira. | [docs/MANIFESTADOR.md](docs/MANIFESTADOR.md) |
 
 ## Destaques técnicos
@@ -76,13 +76,15 @@ Cada decisão abaixo existe porque o erro correspondente é caro de desfazer.
 | **Manutenção preventiva** | Um **dry-run** diário percorre o fluxo real de cada município até a fronteira da emissão e aponta o seletor que quebrou, sem emitir nada e sem gastar solver. |
 | **Freio automático de portal fora** | Três falhas seguidas abrem um *circuit breaker*: o lote para em estado retomável e sai alerta por e-mail, em vez de queimar créditos de solver. Portal municipal para sozinho, os outros seguem; o bloqueio expira sem intervenção. O que esgotou tentativas volta à fila com um clique, agrupado por motivo. |
 | **PDF salvo precisa ser certidão** | Antes de gravar validade, um gate confere texto e vocabulário de certidão: página de erro do portal é descartada e vira falha com retry, não certidão "válida" no painel. Reprova só por evidência negativa, para não quebrar fluxos que funcionam. |
-| **Cadastro que se defende sozinho** | CNPJ validado por dígito verificador, dados da Receita via BrasilAPI com fallback ReceitaWS. Campo vazio é preenchido; campo divergente é **sinalizado, nunca sobrescrito** (a automação municipal casa cidade por string). CNPJ baixado sai do lote automático. |
+| **Cadastro que se defende sozinho** | CNPJ validado por dígito verificador, dados da Receita via BrasilAPI com complementação ReceitaWS. Campos ausentes são preenchidos sem sobrescrever divergências; a automação municipal casa cidade por string. CNPJ baixado sai do lote automático. |
 | **Observabilidade de verdade** | Saída dupla (console + `app.jsonl`), `request_id` por requisição e `execution_id` por lote, erros traduzidos em título + causa + ação, preflight antes de emitir e detector de recorrência com hipótese de causa. |
-| **Segurança no uso diário** | Autenticação *deny-by-default* por `before_request` global (rota nova nasce protegida), três papéis hierárquicos, CSRF, trilha de auditoria, PDF por token assinado e expirável, segredos só via ambiente. |
-| **CI com paridade de banco** | Lint + suíte em SQLite em todo PR; a suíte inteira contra **MySQL 8.0** roda quando há alteração de backend, banco ou testes, além de uma execução noturna e manual, pegando divergência de enum, colação e tipo antes da produção e validando a migração idempotente (`upgrade → downgrade → upgrade`). |
+| **Segurança no uso diário** | Autenticação *deny-by-default* por `before_request` global (rota nova nasce protegida), três papéis hierárquicos, CSRF, cabeçalhos de segurança em toda resposta, sessão que expira em 12 h sem uso, trilha de auditoria, PDF por token assinado e expirável, segredos só via ambiente. |
+| **O navegador abre na mesa certa** | Emissão que precisa de Chrome roda na **estação** do operador, não na tela do servidor: um agente instalado pelo próprio Zelo, que fala com o servidor só pela API, com token ligado ao usuário, e devolve o PDF para o servidor conferir antes de aceitar. Pelo acesso remoto (Cloudflare Tunnel), nada abre navegador no servidor. |
+| **Entrega contínua com freio** | Mesclou na `main` com CI verde, a versão sai e é aplicada no servidor por um runner próprio. O deploy espera não haver lote, emissão nem sessão de NFS-e, respeita a janela fora do expediente e volta sozinho para a versão anterior se falhar. |
+| **CI com paridade de banco** | SQLite/lint em todo PR e push na main; JavaScript roda em PRs que alteram frontend, templates, testes JS, ferramentas, workflows ou configuração/dependências Node. **MySQL 8.0** só começa após os gates rápidos no PR e no manual; não há execução agendada. A suíte inteira e o round-trip de migration preservam a paridade com produção. |
 | **Assinatura fiscal sem framework** | A manifestação de NF-e assina XMLDSig e fala SOAP com a SEFAZ usando só a biblioteca padrão + `cryptography`, sem `lxml`, `signxml` ou `zeep`. A equivalência da canonicalização foi **medida contra 3 NF-e reais assinadas** (digest byte a byte, assinatura RSA verificada) antes de escrever a primeira linha do fluxo. |
 | **Certificado casado por prova, não por nome** | Cada empresa é ligada ao seu `.pfx` pelo CNPJ que está **dentro** do certificado, o único identificador que a autoridade certificadora garante. Nome de arquivo, de pasta e razão social não servem: variam de grafia, se repetem entre titulares e às vezes nem são um nome. O `.pfx` nunca é copiado: só caminho e senha cifrada. |
-| **Reuso deliberado** | Um motor de lotes para seis fluxos e núcleos únicos de captcha de imagem, política de certificado do Chrome e classificação de PDF. Cada cópia seria uma divergência silenciosa entre dois portais. |
+| **Reuso deliberado** | Um motor de lotes para seis fluxos e núcleos únicos de captcha (imagem e reCAPTCHA), política de certificado do Chrome e classificação de PDF. Cada cópia seria uma divergência silenciosa entre dois portais. |
 
 ## Vitrine de código
 
@@ -98,8 +100,8 @@ Módulos publicados inteiros, com o raciocínio junto. Cada um roda sozinho.
 | --- | --- |
 | Backend | Python 3.10+, Flask, SQLAlchemy 2.0 / Flask-Migrate, Flask-Login, Flask-WTF, APScheduler |
 | Automação | Selenium, undetected-chromedriver, 2captcha, pdfplumber, certificado digital A1/A3 via política do Chrome |
-| Integrações | BrasilAPI e ReceitaWS (consulta de CNPJ) via `requests`; webservices da SEFAZ (NF-e) por SOAP + mTLS, com XMLDSig assinado pela biblioteca padrão + `cryptography` |
-| Frontend | Jinja2, Bootstrap 5.3 com identidade própria (design tokens, IBM Plex, dark/light), JS vanilla (ES modules, sem bundler), JSDoc com `checkJs` e testes Node |
+| Integrações | BrasilAPI, ReceitaWS e CNPJá (consulta de CNPJ) via `requests`; API nacional da NFS-e; webservices da SEFAZ (NF-e) por SOAP + mTLS, com XMLDSig assinado pela biblioteca padrão + `cryptography` |
+| Frontend | Jinja2, Bootstrap 5.3 com identidade própria (design tokens, Geist, dark/light), JS vanilla (ES modules, sem bundler), JSDoc com `checkJs` e testes Node |
 | Dados | MySQL 8.0 (produção), SQLite (desenvolvimento) |
 | Documentos | openpyxl (XLSX), pypdf + fpdf2 (dossiê PDF), thefuzz (casamento de nomes) |
 

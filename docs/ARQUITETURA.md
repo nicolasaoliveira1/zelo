@@ -76,10 +76,10 @@ estado compartilhado fica em um único lugar.
 
 ## Testes e CI
 
-Dois jobs paralelos no GitHub Actions, com papéis distintos:
+Os jobs do GitHub Actions têm papéis distintos:
 
 - **`testes-sqlite`** — lint (`ruff`) e a suíte inteira em SQLite. É o gate rápido, roda em todo PR e em push na `main`.
-- **`testes-mysql`** — a suíte inteira contra **MySQL 8.0** em service container, com `utf8mb4`/`utf8mb4_0900_ai_ci`, quando há alteração de backend, banco ou testes, mais uma execução noturna e manual. O job também valida a **migração idempotente** (`upgrade → downgrade → upgrade`).
+- **`testes-mysql`** — a suíte inteira contra **MySQL 8.0** em service container, com `utf8mb4`/`utf8mb4_0900_ai_ci`, quando há alteração de backend, banco ou testes, e sob demanda; começa só depois dos gates rápidos, e não há execução agendada. O job também valida a **migração idempotente** (`upgrade → downgrade → upgrade`).
 
 A paridade não é zelo excessivo. Cinco divergências entre os dois bancos já
 custaram caro, e **todas passam no gate rápido**: o tipo enum nativo diverge
